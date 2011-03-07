@@ -3,14 +3,16 @@ include $(CLEAR_VARS)
 
 ifeq ($(TARGET_ARCH),arm)
 	LOCAL_CFLAGS += -DOPENSSL_BN_ASM_MONT -DAES_ASM -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM
-	LOCAL_SRC_FILES:= 0.9.9-dev/bn/armv4-mont.s \
-	                  0.9.9-dev/aes/aes-armv4.s \
-	                  0.9.9-dev/sha/sha1-armv4-large.s \
-	                  0.9.9-dev/sha/sha256-armv4.s \
-	                  0.9.9-dev/sha/sha512-armv4.s
+	LOCAL_SRC_FILES:= 0.9.9-dev/bn/armv4-mont.S \
+	                  0.9.9-dev/aes/aes-armv4.S \
+	                  0.9.9-dev/sha/sha1-armv4-large.S \
+	                  0.9.9-dev/sha/sha256-armv4.S \
+	                  0.9.9-dev/sha/sha512-armv4.S
 else
 	LOCAL_SRC_FILES:= aes/aes_core.c
 endif
+## temp workaround for above to get things working (no ARMv4 asm)
+#arm_src_files := aes/aes_core.c
 
 LOCAL_SRC_FILES+= \
 	cryptlib.c \
@@ -469,8 +471,8 @@ LOCAL_CFLAGS += -DNO_WINDOWS_BRAINDEATH
 include $(LOCAL_PATH)/../android-config.mk
 
 LOCAL_C_INCLUDES += \
-	external/openssl \
-	external/openssl/include \
+	$(NDK_PROJECT_PATH) \
+	$(NDK_PROJECT_PATH)/include \
 
 # LOCAL_SHARED_LIBRARIES += libengines
 

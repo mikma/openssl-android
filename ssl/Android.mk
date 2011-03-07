@@ -43,9 +43,9 @@ include $(LOCAL_PATH)/../android-config.mk
 
 
 LOCAL_C_INCLUDES += \
-	external/openssl \
-	external/openssl/include \
-	external/openssl/crypto
+	$(NDK_PROJECT_PATH) \
+	$(NDK_PROJECT_PATH)/include \
+	$(NDK_PROJECT_PATH)/crypto
 
 LOCAL_SHARED_LIBRARIES += libcrypto
 
