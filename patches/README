@@ -26,12 +26,18 @@ jsse.patch
 
 Support for JSSE implementation based on OpenSSL.
 
+npn.patch
 
-secadv_20101116-2.patch
+Transport Layer Security (TLS) Next Protocol Negotiation Extension
 
-OpenSSL Security Advisory [16 November 2010]
-TLS extension parsing race condition. (UPDATED)
-CVE-2010-3864
-http://www.openssl.org/news/secadv_20101116-2.txt
+sslv3_uninit_padding.patch
 
+This patch sets the padding for SSLv3 block ciphers to zero.
 
+sha1_armv4_large.patch
+
+This patch eliminates memory stores to addresses below SP.
+
+mips_asm.patch
+
+MIPS assembly routines (AES, BN, SHA1, SHA256)

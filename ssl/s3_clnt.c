@@ -435,7 +435,16 @@ int ssl3_connect(SSL *s)
 			ret=ssl3_send_change_cipher_spec(s,
 				SSL3_ST_CW_CHANGE_A,SSL3_ST_CW_CHANGE_B);
 			if (ret <= 0) goto end;
+
+#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
 			s->state=SSL3_ST_CW_FINISHED_A;
+#else
+			if (s->next_proto_negotiated)
+				s->state=SSL3_ST_CW_NEXT_PROTO_A;
+			else
+				s->state=SSL3_ST_CW_FINISHED_A;
+#endif
+
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
@@ -462,6 +471,15 @@ int ssl3_connect(SSL *s)
 				}
 
 			break;
+
+#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+		case SSL3_ST_CW_NEXT_PROTO_A:
+		case SSL3_ST_CW_NEXT_PROTO_B:
+			ret=ssl3_send_next_proto(s);
+			if (ret <= 0) goto end;
+			s->state=SSL3_ST_CW_FINISHED_A;
+			break;
+#endif
 
 		case SSL3_ST_CW_FINISHED_A:
 		case SSL3_ST_CW_FINISHED_B:
@@ -925,8 +943,11 @@ int ssl3_get_server_hello(SSL *s)
 		s->session->cipher_id = s->session->cipher->id;
 	if (s->hit && (s->session->cipher_id != c->id))
 		{
+/* Workaround is now obsolete */
+#if 0
 		if (!(s->options &
 			SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG))
+#endif
 			{
 			al=SSL_AD_ILLEGAL_PARAMETER;
 			SSLerr(SSL_F_SSL3_GET_SERVER_HELLO,SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
@@ -1567,6 +1588,7 @@ int ssl3_get_key_exchange(SSL *s)
 		s->session->sess_cert->peer_ecdh_tmp=ecdh;
 		ecdh=NULL;
 		BN_CTX_free(bn_ctx);
+		bn_ctx = NULL;
 		EC_POINT_free(srvr_ecpoint);
 		srvr_ecpoint = NULL;
 		}
@@ -2298,6 +2320,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 			if (!DH_generate_key(dh_clnt))
 				{
 				SSLerr(SSL_F_SSL3_SEND_CLIENT_KEY_EXCHANGE,ERR_R_DH_LIB);
+				DH_free(dh_clnt);
 				goto err;
 				}
 
@@ -2309,6 +2332,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 			if (n <= 0)
 				{
 				SSLerr(SSL_F_SSL3_SEND_CLIENT_KEY_EXCHANGE,ERR_R_DH_LIB);
+				DH_free(dh_clnt);
 				goto err;
 				}
 
@@ -3059,6 +3083,32 @@ err:
  */
 
 #ifndef OPENSSL_NO_TLSEXT
+# ifndef OPENSSL_NO_NEXTPROTONEG
+int ssl3_send_next_proto(SSL *s)
+	{
+	unsigned int len, padding_len;
+	unsigned char *d;
+
+	if (s->state == SSL3_ST_CW_NEXT_PROTO_A)
+		{
+		len = s->next_proto_negotiated_len;
+		padding_len = 32 - ((len + 2) % 32);
+		d = (unsigned char *)s->init_buf->data;
+		d[4] = len;
+		memcpy(d + 5, s->next_proto_negotiated, len);
+		d[5 + len] = padding_len;
+		memset(d + 6 + len, 0, padding_len);
+		*(d++)=SSL3_MT_NEXT_PROTO;
+		l2n3(2 + len + padding_len, d);
+		s->state = SSL3_ST_CW_NEXT_PROTO_B;
+		s->init_num = 4 + 2 + len + padding_len;
+		s->init_off = 0;
+		}
+
+	return ssl3_do_write(s, SSL3_RT_HANDSHAKE);
+	}
+# endif
+
 int ssl3_check_finished(SSL *s)
 	{
 	int ok;

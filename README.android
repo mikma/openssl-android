@@ -23,6 +23,7 @@ The following steps are recommended for porting new OpenSSL versions.
 
 2) Update the variables in openssl.config and openssl.version as appropriate.
    At the very least you will need to update the openssl.version.
+   Similarly update ThirdPartyProject.prop.
 
 3) Run:
 
@@ -41,7 +42,7 @@ The following steps are recommended for porting new OpenSSL versions.
 
 6) Build openssl from the external/openssl directory with:
 
-     mm -j16 snod && adb sync system
+     mm -j16 snod && adb remount && adb sync system
 
    If there are build errors, then patches/*.mk, openssl.config, or
    android-config.mk may need updating.

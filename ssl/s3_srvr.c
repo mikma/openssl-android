@@ -538,7 +538,14 @@ int ssl3_accept(SSL *s)
 				 * the client uses its key from the certificate
 				 * for key exchange.
 				 */
+#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
 				s->state=SSL3_ST_SR_FINISHED_A;
+#else
+				if (s->s3->next_proto_neg_seen)
+					s->state=SSL3_ST_SR_NEXT_PROTO_A;
+				else
+					s->state=SSL3_ST_SR_FINISHED_A;
+#endif
 				s->init_num = 0;
 				}
 			else
@@ -581,9 +588,26 @@ int ssl3_accept(SSL *s)
 			ret=ssl3_get_cert_verify(s);
 			if (ret <= 0) goto end;
 
+#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
 			s->state=SSL3_ST_SR_FINISHED_A;
+#else
+			if (s->s3->next_proto_neg_seen)
+				s->state=SSL3_ST_SR_NEXT_PROTO_A;
+			else
+				s->state=SSL3_ST_SR_FINISHED_A;
+#endif
 			s->init_num=0;
 			break;
+
+#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+		case SSL3_ST_SR_NEXT_PROTO_A:
+		case SSL3_ST_SR_NEXT_PROTO_B:
+			ret=ssl3_get_next_proto(s);
+			if (ret <= 0) goto end;
+			s->init_num = 0;
+			s->state=SSL3_ST_SR_FINISHED_A;
+			break;
+#endif
 
 		case SSL3_ST_SR_FINISHED_A:
 		case SSL3_ST_SR_FINISHED_B:
@@ -655,7 +679,16 @@ int ssl3_accept(SSL *s)
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_SW_FLUSH;
 			if (s->hit)
+				{
+#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
 				s->s3->tmp.next_state=SSL3_ST_SR_FINISHED_A;
+#else
+				if (s->s3->next_proto_neg_seen)
+					s->s3->tmp.next_state=SSL3_ST_SR_NEXT_PROTO_A;
+				else
+					s->s3->tmp.next_state=SSL3_ST_SR_FINISHED_A;
+#endif
+				}
 			else
 				s->s3->tmp.next_state=SSL_ST_OK;
 			s->init_num=0;
@@ -768,14 +801,19 @@ int ssl3_check_client_hello(SSL *s)
 	if (s->s3->tmp.message_type == SSL3_MT_CLIENT_HELLO)
 		{
 		/* Throw away what we have done so far in the current handshake,
-		 * which will now be aborted. (A full SSL_clear would be too much.)
-		 * I hope that tmp.dh is the only thing that may need to be cleared
-		 * when a handshake is not completed ... */
+		 * which will now be aborted. (A full SSL_clear would be too much.) */
 #ifndef OPENSSL_NO_DH
 		if (s->s3->tmp.dh != NULL)
 			{
 			DH_free(s->s3->tmp.dh);
 			s->s3->tmp.dh = NULL;
+			}
+#endif
+#ifndef OPENSSL_NO_ECDH
+		if (s->s3->tmp.ecdh != NULL)
+			{
+			EC_KEY_free(s->s3->tmp.ecdh);
+			s->s3->tmp.ecdh = NULL;
 			}
 #endif
 		return 2;
@@ -997,6 +1035,10 @@ int ssl3_get_client_hello(SSL *s)
 				break;
 				}
 			}
+/* Disabled because it can be used in a ciphersuite downgrade
+ * attack: CVE-2010-4180.
+ */
+#if 0
 		if (j == 0 && (s->options & SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG) && (sk_SSL_CIPHER_num(ciphers) == 1))
 			{
 			/* Special case as client bug workaround: the previously used cipher may
@@ -1011,6 +1053,7 @@ int ssl3_get_client_hello(SSL *s)
 				j = 1;
 				}
 			}
+#endif
 		if (j == 0)
 			{
 			/* we need to have the cipher in the cipher
@@ -1498,7 +1541,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 
 			if (s->s3->tmp.dh != NULL)
 				{
-				DH_free(dh);
 				SSLerr(SSL_F_SSL3_SEND_SERVER_KEY_EXCHANGE, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
@@ -1559,7 +1601,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 
 			if (s->s3->tmp.ecdh != NULL)
 				{
-				EC_KEY_free(s->s3->tmp.ecdh); 
 				SSLerr(SSL_F_SSL3_SEND_SERVER_KEY_EXCHANGE, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
@@ -1570,12 +1611,11 @@ int ssl3_send_server_key_exchange(SSL *s)
 				SSLerr(SSL_F_SSL3_SEND_SERVER_KEY_EXCHANGE,ERR_R_ECDH_LIB);
 				goto err;
 				}
-			if (!EC_KEY_up_ref(ecdhp))
+			if ((ecdh = EC_KEY_dup(ecdhp)) == NULL)
 				{
 				SSLerr(SSL_F_SSL3_SEND_SERVER_KEY_EXCHANGE,ERR_R_ECDH_LIB);
 				goto err;
 				}
-			ecdh = ecdhp;
 
 			s->s3->tmp.ecdh=ecdh;
 			if ((EC_KEY_get0_public_key(ecdh) == NULL) ||
@@ -1738,6 +1778,7 @@ int ssl3_send_server_key_exchange(SSL *s)
 			    (unsigned char *)encodedPoint, 
 			    encodedlen);
 			OPENSSL_free(encodedPoint);
+			encodedPoint = NULL;
 			p += encodedlen;
 			}
 #endif
@@ -2447,6 +2488,12 @@ int ssl3_get_client_key_exchange(SSL *s)
 			/* Get encoded point length */
 			i = *p; 
 			p += 1;
+			if (n != 1 + i)
+				{
+				SSLerr(SSL_F_SSL3_GET_CLIENT_KEY_EXCHANGE,
+				    ERR_R_EC_LIB);
+				goto err;
+				}
 			if (EC_POINT_oct2point(group, 
 			    clnt_ecpoint, p, i, bn_ctx) == 0)
 				{
@@ -2591,12 +2638,19 @@ int ssl3_get_client_key_exchange(SSL *s)
 			{
 			int ret = 0;
 			EVP_PKEY_CTX *pkey_ctx;
-			EVP_PKEY *client_pub_pkey = NULL;
+			EVP_PKEY *client_pub_pkey = NULL, *pk = NULL;
 			unsigned char premaster_secret[32], *start;
-			size_t outlen=32, inlen;			
+			size_t outlen=32, inlen;
+			unsigned long alg_a;
 
 			/* Get our certificate private key*/
-			pkey_ctx = EVP_PKEY_CTX_new(s->cert->key->privatekey,NULL);	
+			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
+			if (alg_a & SSL_aGOST94)
+				pk = s->cert->pkeys[SSL_PKEY_GOST94].privatekey;
+			else if (alg_a & SSL_aGOST01)
+				pk = s->cert->pkeys[SSL_PKEY_GOST01].privatekey;
+
+			pkey_ctx = EVP_PKEY_CTX_new(pk,NULL);
 			EVP_PKEY_decrypt_init(pkey_ctx);
 			/* If client certificate is present and is of the same type, maybe
 			 * use it for key exchange.  Don't mind errors from
@@ -3189,4 +3243,72 @@ int ssl3_send_cert_status(SSL *s)
 	/* SSL3_ST_SW_CERT_STATUS_B */
 	return(ssl3_do_write(s,SSL3_RT_HANDSHAKE));
 	}
+
+# ifndef OPENSSL_NO_NPN
+/* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
+ * sets the next_proto member in s if found */
+int ssl3_get_next_proto(SSL *s)
+	{
+	int ok;
+	unsigned proto_len, padding_len;
+	long n;
+	const unsigned char *p;
+
+	/* Clients cannot send a NextProtocol message if we didn't see the
+	 * extension in their ClientHello */
+	if (!s->s3->next_proto_neg_seen)
+		{
+		SSLerr(SSL_F_SSL3_GET_NEXT_PROTO,SSL_R_GOT_NEXT_PROTO_WITHOUT_EXTENSION);
+		return -1;
+		}
+
+	n=s->method->ssl_get_message(s,
+		SSL3_ST_SR_NEXT_PROTO_A,
+		SSL3_ST_SR_NEXT_PROTO_B,
+		SSL3_MT_NEXT_PROTO,
+		514,  /* See the payload format below */
+		&ok);
+
+	if (!ok)
+		return((int)n);
+
+	/* s->state doesn't reflect whether ChangeCipherSpec has been received
+	 * in this handshake, but s->s3->change_cipher_spec does (will be reset
+	 * by ssl3_get_finished). */
+	if (!s->s3->change_cipher_spec)
+		{
+		SSLerr(SSL_F_SSL3_GET_NEXT_PROTO,SSL_R_GOT_NEXT_PROTO_BEFORE_A_CCS);
+		return -1;
+		}
+
+	if (n < 2)
+		return 0;  /* The body must be > 1 bytes long */
+
+	p=(unsigned char *)s->init_msg;
+
+	/* The payload looks like:
+	 *   uint8 proto_len;
+	 *   uint8 proto[proto_len];
+	 *   uint8 padding_len;
+	 *   uint8 padding[padding_len];
+	 */
+	proto_len = p[0];
+	if (proto_len + 2 > s->init_num)
+		return 0;
+	padding_len = p[proto_len + 1];
+	if (proto_len + padding_len + 2 != s->init_num)
+		return 0;
+
+	s->next_proto_negotiated = OPENSSL_malloc(proto_len);
+	if (!s->next_proto_negotiated)
+		{
+		SSLerr(SSL_F_SSL3_GET_NEXT_PROTO,ERR_R_MALLOC_FAILURE);
+		return 0;
+		}
+	memcpy(s->next_proto_negotiated, p + 1, proto_len);
+	s->next_proto_negotiated_len = proto_len;
+
+	return 1;
+	}
+# endif
 #endif
