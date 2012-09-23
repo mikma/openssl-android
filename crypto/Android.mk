@@ -528,14 +528,14 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/../android-config.mk
 
-ifeq ($(TARGET_ARCH),arm)
+#ifeq ($(TARGET_ARCH),arm)
 LOCAL_NDK_VERSION := 5
 LOCAL_SDK_VERSION := 9
 # Use the NDK prebuilt libz and libdl.
 LOCAL_LDFLAGS += -lz -ldl
-else
-LOCAL_SHARED_LIBRARIES += libz libdl
-endif
+#else
+#LOCAL_SHARED_LIBRARIES += libz libdl
+#endif
 
 LOCAL_SRC_FILES += $(local_src_files)
 LOCAL_CFLAGS += $(local_c_flags)
