@@ -8,7 +8,7 @@ arm_src_files := \
 	crypto/bn/asm/armv4-gf2m.s \
 	crypto/bn/asm/armv4-mont.S \
 	crypto/bn/bn_asm.c \
-	crypto/modes/asm/ghash-armv4.s \
+	crypto/modes/asm/ghash-armv4.S \
 	crypto/sha/asm/sha1-armv4-large.S \
 	crypto/sha/asm/sha256-armv4.S \
 	crypto/sha/asm/sha512-armv4.S
