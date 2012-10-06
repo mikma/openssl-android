@@ -549,13 +549,13 @@ local_src_files := \
  crypto/x509v3/v3err.c
 
 local_c_includes := \
- $(NDK_PROJECT_PATH) \
- $(NDK_PROJECT_PATH)/crypto \
- $(NDK_PROJECT_PATH)/crypto/asn1 \
- $(NDK_PROJECT_PATH)/crypto/evp \
- $(NDK_PROJECT_PATH)/crypto/modes \
- $(NDK_PROJECT_PATH)/include \
- $(NDK_PROJECT_PATH)/include/openssl
+ $(LOCAL_PATH) \
+ $(LOCAL_PATH)/crypto \
+ $(LOCAL_PATH)/crypto/asn1 \
+ $(LOCAL_PATH)/crypto/evp \
+ $(LOCAL_PATH)/crypto/modes \
+ $(LOCAL_PATH)/include \
+ $(LOCAL_PATH)/include/openssl
 
 local_c_flags := -DNO_WINDOWS_BRAINDEATH
 
@@ -602,6 +602,7 @@ endif
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE:= libcrypto_static
 LOCAL_ADDITIONAL_DEPENDENCIES := $(local_additional_dependencies)
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_STATIC_LIBRARY)
 
 #######################################
@@ -644,6 +645,7 @@ endif
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE:= libcrypto
 LOCAL_ADDITIONAL_DEPENDENCIES := $(local_additional_dependencies)
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_SHARED_LIBRARY)
 
 #######################################

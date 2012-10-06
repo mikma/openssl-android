@@ -1,9 +1,9 @@
 LOCAL_PATH:= $(call my-dir)
 
 local_c_includes := \
-	$(NDK_PROJECT_PATH) \
-	$(NDK_PROJECT_PATH)/include \
-	$(NDK_PROJECT_PATH)/crypto
+	$(LOCAL_PATH) \
+	$(LOCAL_PATH)/include \
+	$(LOCAL_PATH)/crypto
 
 local_src_files:= \
 	ssl/bio_ssl.c \
@@ -69,6 +69,7 @@ LOCAL_SHARED_LIBRARIES = $(log_shared_libraries)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE:= libssl_static
 LOCAL_ADDITIONAL_DEPENDENCIES := $(local_additional_dependencies)
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_STATIC_LIBRARY)
 
 #######################################
@@ -86,6 +87,7 @@ LOCAL_SHARED_LIBRARIES += libcrypto $(log_shared_libraries)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE:= libssl
 LOCAL_ADDITIONAL_DEPENDENCIES := $(local_additional_dependencies)
+LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_SHARED_LIBRARY)
 
 #######################################

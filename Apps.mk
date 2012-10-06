@@ -58,8 +58,8 @@ local_shared_libraries := \
 	libcrypto
 
 local_c_includes := \
-	$(NDK_PROJECT_PATH) \
-	$(NDK_PROJECT_PATH)/include
+	$(LOCAL_PATH) \
+	$(LOCAL_PATH)/include
 
 local_cflags := -DMONOLITH
 
