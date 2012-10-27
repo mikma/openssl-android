@@ -459,6 +459,7 @@ local_src_files := \
  crypto/rsa/rsa_asn1.c \
  crypto/rsa/rsa_chk.c \
  crypto/rsa/rsa_crpt.c \
+ crypto/rsa/rsa_depr.c \
  crypto/rsa/rsa_eay.c \
  crypto/rsa/rsa_err.c \
  crypto/rsa/rsa_gen.c \
