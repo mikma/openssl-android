@@ -42,7 +42,7 @@ LOCAL_SRC_FILES += $(target_src_files)
 LOCAL_CFLAGS += $(target_c_flags)
 LOCAL_C_INCLUDES += $(target_c_includes)
 LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE:= libcrypto
+LOCAL_MODULE:= libcrypto$(OPENSSL_POSTFIX)
 LOCAL_ADDITIONAL_DEPENDENCIES := $(local_additional_dependencies)
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/include
 include $(BUILD_SHARED_LIBRARY)

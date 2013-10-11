@@ -3,8 +3,8 @@
 LOCAL_PATH:= $(call my-dir)
 
 local_shared_libraries := \
-	libssl \
-	libcrypto
+	libssl$(OPENSSL_POSTFIX) \
+	libcrypto$(OPENSSL_POSTFIX)
 
 local_c_includes :=
 local_c_flags :=
