@@ -50,6 +50,7 @@ LOCAL_LDFLAGS += -ldl
 
 LOCAL_SRC_FILES += $(target_src_files)
 LOCAL_CFLAGS += $(target_c_flags)
+LOCAL_LDFLAGS += -Wl,-soname=libcrypto_m7n.so
 LOCAL_C_INCLUDES += $(target_c_includes)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE:= libcrypto$(OPENSSL_POSTFIX)

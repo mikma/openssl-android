@@ -46,6 +46,7 @@ endif
 
 LOCAL_SRC_FILES += $(target_src_files)
 LOCAL_CFLAGS += $(target_c_flags)
+LOCAL_LDFLAGS += -Wl,-soname=libssl_m7n.so
 LOCAL_C_INCLUDES += $(target_c_includes)
 LOCAL_SHARED_LIBRARIES += libcrypto$(OPENSSL_POSTFIX) $(log_shared_libraries)
 LOCAL_MODULE_TAGS := optional
